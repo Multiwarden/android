@@ -1,0 +1,200 @@
+# Multiwarden: tests the Multiwarden changes and builds the Android app (F-Droid flavor).
+# It publishes a GitHub release with a signed APK when started from the Actions tab with
+# "release" ticked (it then creates the tag itself), or when a tag like v2026.11.1.1 is pushed.
+# Signing needs the MULTIWARDEN_KEYSTORE* secrets (see multiwarden/README.md).
+#
+# On an upstream sync branch (sync/bitwarden-*) that passes every check, the "Merge sync" job
+# merges the sync PR and starts a release, so new Bitwarden versions ship without manual steps.
+#
+# Release checklist: bump "release" in multiwarden/version.json and commit, then run this
+# workflow on main with "release" ticked. The tag is v<bitwarden version>.<release>.
+name: Multiwarden CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a release (creates the version tag)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  # Bitwarden's SDK comes from GitHub Packages.
+  packages: read
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Multiwarden hooks in Bitwarden's files
+        run: node multiwarden/scripts/check-hooks.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew detekt
+
+      - name: Test Multiwarden changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew :app:testFdroidDebugUnitTest \
+            --tests 'com.x8bit.bitwarden.multiwarden.*' \
+            --tests 'com.x8bit.bitwarden.data.autofill.*' \
+            --tests 'com.x8bit.bitwarden.AutofillCallbackViewModelTest'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: app/build/reports/tests
+
+  build:
+    name: Build APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KEYSTORE_BASE64: ${{ secrets.MULTIWARDEN_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version
+        run: |
+          version="$(node -p 'const v = require("./multiwarden/version.json"); `${v.bitwarden}.${v.release}`')"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleFdroidDebug
+
+      - name: Build signed release APK
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          MULTIWARDEN_KEYSTORE_PASSWORD: ${{ secrets.MULTIWARDEN_KEYSTORE_PASSWORD }}
+          MULTIWARDEN_KEY_ALIAS: ${{ secrets.MULTIWARDEN_KEY_ALIAS }}
+          MULTIWARDEN_KEY_PASSWORD: ${{ secrets.MULTIWARDEN_KEY_PASSWORD }}
+        run: |
+          export MULTIWARDEN_KEYSTORE_FILE="$RUNNER_TEMP/multiwarden.keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$MULTIWARDEN_KEYSTORE_FILE"
+          ./gradlew :app:assembleFdroidRelease
+          rm -f "$MULTIWARDEN_KEYSTORE_FILE"
+
+      - name: Check package name, app name and version
+        run: |
+          aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)"
+          mkdir -p dist
+          for apk in $(find app/build/outputs/apk -name '*.apk'); do
+            badging="$("$aapt2" dump badging "$apk")"
+            echo "$apk"
+            echo "$badging" | grep -E "^package:|^application-label:"
+            echo "$badging" | grep -q "^package: name='nl.mteij.multiwarden" \
+              || { echo "::error::$apk does not have Multiwarden's application ID"; exit 1; }
+            echo "$badging" | grep -q "versionName='$VERSION'" \
+              || { echo "::error::$apk is not version $VERSION"; exit 1; }
+            echo "$badging" | grep -q "^application-label:'Multiwarden" \
+              || { echo "::error::$apk is not called Multiwarden"; exit 1; }
+          done
+          cp app/build/outputs/apk/fdroid/debug/*.apk "dist/multiwarden-debug-$VERSION.apk"
+          if [ -d app/build/outputs/apk/fdroid/release ]; then
+            cp app/build/outputs/apk/fdroid/release/*.apk "dist/multiwarden-$VERSION.apk"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: multiwarden-android
+          path: dist/*.apk
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    needs: [test, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: multiwarden-android
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p 'const v = require("./multiwarden/version.json"); `${v.bitwarden}.${v.release}`')"
+          if [ ! -f "dist/multiwarden-$version.apk" ]; then
+            echo "::error::No signed release APK. Add the MULTIWARDEN_KEYSTORE* secrets (see multiwarden/README.md)."
+            exit 1
+          fi
+          tag="v${version}"
+          if gh release view "$tag" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+            echo "::error::Release $tag already exists. Bump \"release\" in multiwarden/version.json first."
+            exit 1
+          fi
+          gh release create "$tag" "dist/multiwarden-$version.apk" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "Multiwarden for Android ${version}" --generate-notes
+
+  merge-sync:
+    name: Merge sync
+    # Only for the upstream sync branches, started by multiwarden-upstream-sync.yml.
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/sync/bitwarden-')
+    needs: [test, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge the sync PR and start a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open \
+            --json number,title,headRefOid --jq '.[0]')"
+          if [ -z "$pr" ]; then
+            echo "No open PR for $BRANCH"
+            exit 0
+          fi
+          number="$(jq -r .number <<< "$pr")"
+          case "$(jq -r .title <<< "$pr")" in
+            "[conflicts]"*)
+              echo "::notice::PR #$number has conflicts; resolve them and merge it by hand."
+              exit 0
+              ;;
+          esac
+          if [ "$(jq -r .headRefOid <<< "$pr")" != "$GITHUB_SHA" ]; then
+            echo "::notice::PR #$number has newer commits than this run; not merging."
+            exit 0
+          fi
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --squash --delete-branch \
+            --match-head-commit "$GITHUB_SHA"
+          # Merges made with the workflow token start no workflows, so start the release here.
+          # The sync reset "release" to 1 for the new Bitwarden version, so the tag is new.
+          gh workflow run multiwarden-ci.yml --repo "$GITHUB_REPOSITORY" --ref main -f release=true
