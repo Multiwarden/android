@@ -1,6 +1,7 @@
-# Bitwarden files that Multiwarden does not carry: Bitwarden's own developer tooling and
-# repository automation (code owners, labels, review and response bots). The upstream sync
-# leaves changes to these paths out, so they stay removed.
+# Bitwarden files that Multiwarden does not carry or replaces with its own: Bitwarden's
+# developer tooling, repository automation (code owners, labels, review and response bots)
+# and its issue and pull request templates. The upstream sync leaves changes to these paths
+# out, so removed files stay removed and Multiwarden's own versions are kept.
 .claude
 .mcp.json
 .github/CODEOWNERS
@@ -9,3 +10,5 @@
 .github/workflows/review-code.yml
 .github/workflows/sdlc-label-pr.yml
 .github/workflows/sdlc-sdk-update-evaluate.yml
+.github/ISSUE_TEMPLATE
+.github/PULL_REQUEST_TEMPLATE.md
