@@ -100,6 +100,21 @@ keytool -genkeypair -v -keystore multiwarden.keystore -alias multiwarden \
 base64 -w0 multiwarden.keystore   # value for MULTIWARDEN_KEYSTORE_BASE64
 ```
 
+## Feature parity
+
+Every Multiwarden feature has a spec page in
+[multiwarden/multiwarden](https://github.com/multiwarden/multiwarden/tree/main/spec), shared with
+the other apps, and a feature issue there with one sub-issue per platform. The
+[Multiwarden parity](https://github.com/orgs/Multiwarden/projects/1) board tracks them.
+
+- New work for a feature: open an issue with the **Platform work for a feature** form and add it
+  as a sub-issue of the feature issue.
+- Pull requests for a feature keep the `Feature: <id>` line from the PR template. The release
+  job turns those lines into a "Multiwarden features" section in the release notes, with links
+  to the spec pages.
+- When a release ships a feature, update its row in
+  [spec/parity.md](https://github.com/multiwarden/multiwarden/blob/main/spec/parity.md).
+
 ## Staying in sync with upstream
 
 Multiwarden follows Bitwarden's **released** Password Manager app (tags `v<version>-bwpm`), not
