@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://multiwarden.mteij.nl">Website</a> ·
+  <a href="https://multiwarden.com">Website</a> ·
   <a href="https://github.com/multiwarden/android/releases">Releases</a> ·
   <a href="https://github.com/multiwarden/clients">Browser extension</a> ·
   <a href="../multiwarden/README.md">Maintainer notes</a>

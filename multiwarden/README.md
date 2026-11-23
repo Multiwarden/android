@@ -37,7 +37,7 @@ fewer. After adding, moving or removing a hook on purpose, run
 | `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/MultiwardenAutofill.kt` | Loads autofill items from every unlocked account (active account first) and adds the account's email to each item's subtitle.                |
 | `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/di/`                    | Hilt module that provides `MultiAccountVault`.                                                                                               |
 | `app/src/test/kotlin/com/x8bit/bitwarden/multiwarden/`                       | Tests for the above, and for the autofill provider with a second unlocked account.                                                           |
-| `multiwarden/multiwarden.gradle`                                             | Build settings: application ID `nl.mteij.multiwarden`, version, app name and icon, F-Droid flavor only, release signing.                     |
+| `multiwarden/multiwarden.gradle`                                             | Build settings: application ID `com.multiwarden.android`, version, app name and icon, F-Droid flavor only, release signing.                  |
 | `multiwarden/android/`                                                       | Resources that replace Bitwarden's: app name per build type, launcher icon and colour.                                                       |
 | `multiwarden/`                                                               | Version, sync bookkeeping, hook list and scripts.                                                                                            |
 | `.github/workflows/multiwarden-*.yml`                                        | The Multiwarden build/test/release and the nightly upstream sync.                                                                            |
@@ -60,7 +60,7 @@ Branding is **not** done in upstream files: `multiwarden/multiwarden.gradle` add
 
 ## Builds and versions
 
-- **Application ID** `nl.mteij.multiwarden` (`.dev` for debug builds), so Multiwarden installs next
+- **Application ID** `com.multiwarden.android` (`.dev` for debug builds), so Multiwarden installs next
   to the official app. Sign in again in Multiwarden; it does not share data with Bitwarden.
 - **F-Droid flavor only.** The standard flavor's Firebase setup is tied to Bitwarden's application
   ID, and Multiwarden does not use Google services.

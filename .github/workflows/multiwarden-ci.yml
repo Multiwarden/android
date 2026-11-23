@@ -110,7 +110,7 @@ jobs:
             badging="$("$aapt2" dump badging "$apk")"
             echo "$apk"
             echo "$badging" | grep -E "^package:|^application-label:"
-            echo "$badging" | grep -q "^package: name='nl.mteij.multiwarden" \
+            echo "$badging" | grep -q "^package: name='com.multiwarden.android" \
               || { echo "::error::$apk does not have Multiwarden's application ID"; exit 1; }
             echo "$badging" | grep -q "versionName='$VERSION'" \
               || { echo "::error::$apk is not version $VERSION"; exit 1; }

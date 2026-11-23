@@ -21,7 +21,7 @@ def multiwardenRelease = multiwardenVersion.release as int
 
 android {
     defaultConfig {
-        applicationId = "nl.mteij.multiwarden"
+        applicationId = "com.multiwarden.android"
         versionName = "${multiwardenVersion.bitwarden}.${multiwardenRelease}"
         // 2026.11.1 release 2 -> 2026110102; always higher than the previous release.
         versionCode = bitwardenYear * 1000000 + bitwardenMonth * 10000 +
