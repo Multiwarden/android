@@ -60,10 +60,11 @@ Branding is **not** done in upstream files: `multiwarden/multiwarden.gradle` add
 
 ### Upstream files Multiwarden leaves out
 
-`multiwarden/upstream-removed-paths` lists Bitwarden files that Multiwarden does not carry:
-Bitwarden's own developer tooling and repository automation (code owners, labels, review and
-response bots). The upstream sync excludes them, so they stay removed. The matching entries in
-`.gitignore` are removed too.
+`multiwarden/upstream-removed-paths` lists Bitwarden files that Multiwarden does not carry or
+replaces with its own: Bitwarden's developer tooling, repository automation (code owners, labels,
+review and response bots) and its issue and pull request templates. The upstream sync excludes
+them, so removed files stay removed and Multiwarden's own templates are kept. The matching
+entries in `.gitignore` are removed too.
 
 ## Builds and versions
 
