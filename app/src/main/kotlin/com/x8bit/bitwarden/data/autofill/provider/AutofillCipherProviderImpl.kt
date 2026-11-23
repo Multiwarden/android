@@ -37,6 +37,8 @@ private const val GET_CIPHERS_TIMEOUT_MS: Long = 2_000L
  * The default [AutofillCipherProvider] implementation. This service is used for getting current
  * [AutofillCipher]s.
  */
+// Multiwarden: the per-account helpers add functions.
+@Suppress("TooManyFunctions")
 class AutofillCipherProviderImpl(
     private val authRepository: AuthRepository,
     private val cipherMatchingManager: CipherMatchingManager,

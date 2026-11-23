@@ -22,6 +22,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: multiwarden-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write
   # Bitwarden's SDK comes from GitHub Packages.

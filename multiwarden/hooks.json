@@ -20,8 +20,8 @@
     "references": 3
   },
   "app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/provider/AutofillCipherProviderImpl.kt": {
-    "markers": 9,
-    "references": 11
+    "markers": 10,
+    "references": 12
   },
   "app/src/test/kotlin/com/x8bit/bitwarden/AutofillCallbackViewModelTest.kt": {
     "markers": 1,
