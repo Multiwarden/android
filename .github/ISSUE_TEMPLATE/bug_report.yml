@@ -1,0 +1,86 @@
+name: Bug report
+description: Something in Multiwarden for Android does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please check that it does **not** also happen in the
+        official Bitwarden app; if it does, report it to
+        [Bitwarden](https://github.com/bitwarden/android/issues) instead.
+
+        Never include passwords, vault contents or other personal data in an issue.
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. Open '...'
+        2. Tap '...'
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: dropdown
+    id: accounts
+    attributes:
+      label: Unlocked accounts
+      description: How many accounts were unlocked when it happened?
+      options:
+        - "1"
+        - "2"
+        - "3 or more"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it happens
+      multiple: true
+      options:
+        - Autofill
+        - Passkeys
+        - Saving a login
+        - Vault
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: e.g. Pixel 8, Android 16
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Multiwarden version
+      description: Settings → About shows the version.
+    validations:
+      required: true
+  - type: dropdown
+    id: upstream
+    attributes:
+      label: Does the official Bitwarden app have the same problem?
+      options:
+        - "No"
+        - Not tested
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Screenshots or other context
+      description: Remove any personal data before uploading.
