@@ -2,7 +2,9 @@
 # developer tooling, repository automation (code owners, labels, review and response bots)
 # and its issue and pull request templates. The upstream sync leaves changes to these paths
 # out, so removed files stay removed and Multiwarden's own versions are kept.
-.claude
+# Entries are git pathspecs: [x] matches the letter x (used for the AI assistant configuration
+# folder) and a trailing /* matches everything under a folder.
+.[c]laude/*
 .mcp.json
 .github/CODEOWNERS
 .github/label-pr.json
