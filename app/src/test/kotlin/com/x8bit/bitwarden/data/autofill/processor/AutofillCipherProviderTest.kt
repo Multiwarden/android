@@ -27,6 +27,7 @@ import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
 import com.x8bit.bitwarden.data.vault.repository.util.statusFor
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -190,6 +191,13 @@ class AutofillCipherProviderTest {
         } returns emptyList()
     }
 
+    // Multiwarden: no other unlocked accounts, so upstream behaviour is unchanged.
+    private val multiAccountVault: MultiAccountVault = mockk {
+        every { otherUnlockedAccounts() } returns emptyList()
+        every { accountLabelOrNull(userId = any()) } returns null
+        coEvery { findOtherOwner(cipherId = any()) } returns null
+    }
+
     private lateinit var autofillCipherProvider: AutofillCipherProvider
 
     @BeforeEach
@@ -200,6 +208,7 @@ class AutofillCipherProviderTest {
             cipherMatchingManager = cipherMatchingManager,
             vaultRepository = vaultRepository,
             policyManager = policyManager,
+            multiAccountVault = multiAccountVault,
         )
     }
 

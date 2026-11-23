@@ -36,6 +36,7 @@ import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardMan
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -90,12 +91,15 @@ object AutofillModule {
         dispatcherManager: DispatcherManager,
         organizationEventManager: OrganizationEventManager,
         totpManager: AutofillTotpManager,
+        // Multiwarden: the completion manager needs the other unlocked accounts.
+        multiAccountVault: MultiAccountVault,
     ): AutofillCompletionManager =
         AutofillCompletionManagerImpl(
             autofillParser = autofillParser,
             dispatcherManager = dispatcherManager,
             organizationEventManager = organizationEventManager,
             totpManager = totpManager,
+            multiAccountVault = multiAccountVault,
         )
 
     @Singleton
@@ -119,6 +123,8 @@ object AutofillModule {
         authRepository: AuthRepository,
         settingsRepository: SettingsRepository,
         vaultRepository: VaultRepository,
+        // Multiwarden: the TOTP manager needs the other unlocked accounts.
+        multiAccountVault: MultiAccountVault,
     ): AutofillTotpManager =
         AutofillTotpManagerImpl(
             clock = clock,
@@ -126,6 +132,7 @@ object AutofillModule {
             authRepository = authRepository,
             settingsRepository = settingsRepository,
             vaultRepository = vaultRepository,
+            multiAccountVault = multiAccountVault,
         )
 
     @Singleton
@@ -135,12 +142,15 @@ object AutofillModule {
         cipherMatchingManager: CipherMatchingManager,
         vaultRepository: VaultRepository,
         policyManager: PolicyManager,
+        // Multiwarden: the cipher provider needs the other unlocked accounts.
+        multiAccountVault: MultiAccountVault,
     ): AutofillCipherProvider =
         AutofillCipherProviderImpl(
             authRepository = authRepository,
             cipherMatchingManager = cipherMatchingManager,
             vaultRepository = vaultRepository,
             policyManager = policyManager,
+            multiAccountVault = multiAccountVault,
         )
 
     @Singleton

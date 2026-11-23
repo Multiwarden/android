@@ -11,6 +11,7 @@ import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardMan
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -41,12 +42,20 @@ class AutofillTotpManagerTest {
     private val settingsRepository: SettingsRepository = mockk()
     private val vaultRepository: VaultRepository = mockk()
 
+    // Multiwarden: no other unlocked accounts, so upstream behaviour is unchanged.
+    private val multiAccountVault: MultiAccountVault = mockk {
+        every { otherUnlockedAccounts() } returns emptyList()
+        every { accountLabelOrNull(userId = any()) } returns null
+        coEvery { findOtherOwner(cipherId = any()) } returns null
+    }
+
     private val autofillTotpManager: AutofillTotpManager = AutofillTotpManagerImpl(
         clock = FIXED_CLOCK,
         clipboardManager = clipboardManager,
         authRepository = authRepository,
         settingsRepository = settingsRepository,
         vaultRepository = vaultRepository,
+        multiAccountVault = multiAccountVault,
     )
 
     @Test

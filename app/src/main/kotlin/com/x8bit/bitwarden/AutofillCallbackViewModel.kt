@@ -11,6 +11,7 @@ import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
 import com.x8bit.bitwarden.data.vault.repository.util.statusFor
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -28,6 +29,8 @@ private const val CIPHER_WAIT_TIMEOUT_MILLIS: Long = 500
 class AutofillCallbackViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val vaultRepository: VaultRepository,
+    // Multiwarden: items can come from any unlocked account.
+    private val multiAccountVault: MultiAccountVault,
 ) : BaseViewModel<Unit, AutofillCallbackEvent, AutofillCallbackAction>(Unit) {
     private val activeUserId: String? get() = authRepository.activeUserId
 
@@ -58,14 +61,22 @@ class AutofillCallbackViewModel @Inject constructor(
                     finishActivity()
                     return@launchWithTimeout
                 }
-                if (isVaultLocked()) {
+                // Multiwarden: the item may belong to another unlocked account.
+                val otherOwner = multiAccountVault.findOtherOwner(cipherId = cipherId)
+                if (otherOwner == null && isVaultLocked()) {
                     Timber.w("Autofill -- Vault is locked")
                     finishActivity()
                     return@launchWithTimeout
                 }
 
                 // Try and find the matching cipher.
-                when (val result = vaultRepository.getCipher(cipherId = cipherId)) {
+                when (
+                    val result = otherOwner
+                        ?.let { owner ->
+                            multiAccountVault.getCipher(userId = owner.userId, cipherId = cipherId)
+                        }
+                        ?: vaultRepository.getCipher(cipherId = cipherId)
+                ) {
                     GetCipherResult.CipherNotFound -> {
                         Timber.w("Autofill -- Cipher not found")
                         finishActivity()

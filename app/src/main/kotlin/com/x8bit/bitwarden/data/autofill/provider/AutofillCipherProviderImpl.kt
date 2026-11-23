@@ -18,6 +18,8 @@ import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
 import com.x8bit.bitwarden.data.vault.repository.util.statusFor
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
+import com.x8bit.bitwarden.multiwarden.autofillCiphersOfAllAccounts
 import timber.log.Timber
 
 /**
@@ -40,10 +42,16 @@ class AutofillCipherProviderImpl(
     private val cipherMatchingManager: CipherMatchingManager,
     private val vaultRepository: VaultRepository,
     private val policyManager: PolicyManager,
+    // Multiwarden: reads the vaults of the other unlocked accounts.
+    private val multiAccountVault: MultiAccountVault,
 ) : AutofillCipherProvider {
     private val activeUserId: String? get() = authRepository.activeUserId
 
-    override suspend fun isVaultLocked(): Boolean {
+    // Multiwarden: autofill works while any account is unlocked, not only the active one.
+    override suspend fun isVaultLocked(): Boolean =
+        isActiveVaultLocked() && multiAccountVault.otherUnlockedAccounts().isEmpty()
+
+    private suspend fun isActiveVaultLocked(): Boolean {
         val userId = activeUserId ?: return true
 
         // Wait for any unlocking actions to finish. This can be relevant on startup for Never lock
@@ -57,10 +65,19 @@ class AutofillCipherProviderImpl(
         return !vaultRepository.isVaultUnlocked(userId = userId)
     }
 
-    override suspend fun getCardAutofillCiphers(): List<AutofillCipher.Card> {
-        val cipherListViews = getUnlockedCipherListViewsOrNull() ?: return emptyList()
-        val organizationIdsWithCardTypeRestrictions = policyManager
-            .getActivePolicies(PolicyType.RESTRICTED_ITEM_TYPES)
+    // Multiwarden: cards of every unlocked account, labelled with their account.
+    override suspend fun getCardAutofillCiphers(): List<AutofillCipher.Card> =
+        multiAccountVault.autofillCiphersOfAllAccounts(activeUserId) { userId ->
+            getCardAutofillCiphers(userId = userId)
+        }
+
+    private suspend fun getCardAutofillCiphers(userId: String): List<AutofillCipher.Card> {
+        val cipherListViews = getUnlockedCipherListViewsOrNull(userId) ?: return emptyList()
+        // Multiwarden: each account's own organization policies.
+        val organizationIdsWithCardTypeRestrictions = getActivePolicies(
+            userId = userId,
+            type = PolicyType.RESTRICTED_ITEM_TYPES,
+        )
             .map { it.organizationId }
         return cipherListViews
             .mapNotNull { cipherListView ->
@@ -80,7 +97,7 @@ class AutofillCipherProviderImpl(
                     }
                     ?.let { nonNullCipherListView ->
                         nonNullCipherListView.id?.let { cipherId ->
-                            decryptCipherOrNull(cipherId = cipherId)?.let { cipherView ->
+                            decryptCipherOrNull(userId, cipherId = cipherId)?.let { cipherView ->
                                 AutofillCipher.Card(
                                     cipherId = cipherView.id,
                                     name = cipherView.name,
@@ -98,10 +115,19 @@ class AutofillCipherProviderImpl(
             }
     }
 
+    // Multiwarden: logins of every unlocked account, labelled with their account.
     override suspend fun getLoginAutofillCiphers(
         uri: String,
+    ): List<AutofillCipher.Login> =
+        multiAccountVault.autofillCiphersOfAllAccounts(activeUserId) { userId ->
+            getLoginAutofillCiphers(userId = userId, uri = uri)
+        }
+
+    private suspend fun getLoginAutofillCiphers(
+        userId: String,
+        uri: String,
     ): List<AutofillCipher.Login> {
-        val cipherViews = getUnlockedCipherListViewsOrNull() ?: return emptyList()
+        val cipherViews = getUnlockedCipherListViewsOrNull(userId) ?: return emptyList()
         // We only care about non-deleted login ciphers.
         val loginCiphers = cipherViews
             .filter {
@@ -120,7 +146,7 @@ class AutofillCipherProviderImpl(
                 matchUri = uri,
             )
             .mapNotNull { cipherListView ->
-                cipherListView.id?.let { decryptCipherOrNull(cipherId = it) }
+                cipherListView.id?.let { decryptCipherOrNull(userId, cipherId = it) }
             }
             .map { cipherView ->
                 AutofillCipher.Login(
@@ -135,8 +161,14 @@ class AutofillCipherProviderImpl(
             }
     }
 
-    override suspend fun getIdentityAutofillCiphers(): List<AutofillCipher.Identity> {
-        val cipherListViews = getUnlockedCipherListViewsOrNull() ?: return emptyList()
+    // Multiwarden: identities of every unlocked account, labelled with their account.
+    override suspend fun getIdentityAutofillCiphers(): List<AutofillCipher.Identity> =
+        multiAccountVault.autofillCiphersOfAllAccounts(activeUserId) { userId ->
+            getIdentityAutofillCiphers(userId = userId)
+        }
+
+    private suspend fun getIdentityAutofillCiphers(userId: String): List<AutofillCipher.Identity> {
+        val cipherListViews = getUnlockedCipherListViewsOrNull(userId) ?: return emptyList()
         return cipherListViews
             .mapNotNull { cipherListView ->
                 cipherListView
@@ -151,7 +183,7 @@ class AutofillCipherProviderImpl(
                     }
                     ?.let { nonNullCipherListView ->
                         nonNullCipherListView.id?.let { cipherId ->
-                            decryptCipherOrNull(cipherId = cipherId)?.let { cipherView ->
+                            decryptCipherOrNull(userId, cipherId = cipherId)?.let { cipherView ->
                                 val identityView = cipherView.identity
                                 AutofillCipher.Identity(
                                     cipherId = cipherView.id,
@@ -186,16 +218,26 @@ class AutofillCipherProviderImpl(
     /**
      * Get available [CipherView]s if possible.
      */
-    private suspend fun getUnlockedCipherListViewsOrNull(): List<CipherListView>? =
-        vaultRepository
+    private suspend fun getUnlockedCipherListViewsOrNull(userId: String): List<CipherListView>? {
+        // Multiwarden: other accounts' ciphers come from their own vault.
+        if (userId != activeUserId) return multiAccountVault.getCipherListViews(userId = userId)
+        return vaultRepository
             .decryptCipherListResultStateFlow
-            .takeUnless { isVaultLocked() }
+            .takeUnless { isActiveVaultLocked() }
             ?.firstWithTimeoutOrNull(timeMillis = GET_CIPHERS_TIMEOUT_MS) { it.data != null }
             ?.data
             ?.successes
+    }
 
-    private suspend fun decryptCipherOrNull(cipherId: String): CipherView? =
-        when (val result = vaultRepository.getCipher(cipherId = cipherId)) {
+    private suspend fun decryptCipherOrNull(userId: String, cipherId: String): CipherView? =
+        // Multiwarden: other accounts' ciphers are decrypted with their own keys.
+        when (
+            val result = if (userId == activeUserId) {
+                vaultRepository.getCipher(cipherId = cipherId)
+            } else {
+                multiAccountVault.getCipher(userId = userId, cipherId = cipherId)
+            }
+        ) {
             GetCipherResult.CipherNotFound -> {
                 Timber.e("Cipher not found for autofill.")
                 null
@@ -207,6 +249,14 @@ class AutofillCipherProviderImpl(
             }
 
             is GetCipherResult.Success -> result.cipherView
+        }
+
+    // Multiwarden: the active account keeps using the active policies.
+    private fun getActivePolicies(userId: String, type: PolicyType) =
+        if (userId == activeUserId) {
+            policyManager.getActivePolicies(type = type)
+        } else {
+            policyManager.getUserPolicies(userId = userId, type = type)
         }
 
     /**

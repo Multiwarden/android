@@ -2,5 +2,41 @@
   "app/build.gradle.kts": {
     "markers": 1,
     "references": 4
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/AutofillCallbackViewModel.kt": {
+    "markers": 2,
+    "references": 3
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/di/AutofillModule.kt": {
+    "markers": 3,
+    "references": 4
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillCompletionManagerImpl.kt": {
+    "markers": 2,
+    "references": 3
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillTotpManagerImpl.kt": {
+    "markers": 2,
+    "references": 3
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/provider/AutofillCipherProviderImpl.kt": {
+    "markers": 9,
+    "references": 11
+  },
+  "app/src/test/kotlin/com/x8bit/bitwarden/AutofillCallbackViewModelTest.kt": {
+    "markers": 1,
+    "references": 2
+  },
+  "app/src/test/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillCompletionManagerTest.kt": {
+    "markers": 1,
+    "references": 2
+  },
+  "app/src/test/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillTotpManagerTest.kt": {
+    "markers": 1,
+    "references": 2
+  },
+  "app/src/test/kotlin/com/x8bit/bitwarden/data/autofill/processor/AutofillCipherProviderTest.kt": {
+    "markers": 1,
+    "references": 2
   }
 }

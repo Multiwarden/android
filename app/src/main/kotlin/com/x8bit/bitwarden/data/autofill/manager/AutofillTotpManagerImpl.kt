@@ -8,6 +8,7 @@ import com.x8bit.bitwarden.data.platform.manager.clipboard.BitwardenClipboardMan
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import java.time.Clock
 
 /**
@@ -19,18 +20,31 @@ class AutofillTotpManagerImpl(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
+    // Multiwarden: items can come from any unlocked account.
+    private val multiAccountVault: MultiAccountVault,
 ) : AutofillTotpManager {
     override suspend fun tryCopyTotpToClipboard(cipherView: CipherView) {
         if (settingsRepository.isAutoCopyTotpDisabled) return
-        val isPremium = authRepository.userStateFlow.value?.activeAccount?.isPremium == true
+        // Multiwarden: premium and the TOTP code come from the account that owns the item.
+        val otherOwner = cipherView.id?.let { multiAccountVault.findOtherOwner(cipherId = it) }
+        val isPremium = otherOwner?.isPremium
+            ?: (authRepository.userStateFlow.value?.activeAccount?.isPremium == true)
         if (!isPremium && !cipherView.organizationUseTotp) return
         cipherView.login?.totp ?: return
         val cipherId = cipherView.id ?: return
 
-        val totpResult = vaultRepository.generateTotp(
-            time = clock.instant(),
-            cipherId = cipherId,
-        )
+        val totpResult = otherOwner
+            ?.let {
+                multiAccountVault.generateTotp(
+                    userId = it.userId,
+                    cipherId = cipherId,
+                    time = clock.instant(),
+                )
+            }
+            ?: vaultRepository.generateTotp(
+                time = clock.instant(),
+                cipherId = cipherId,
+            )
 
         if (totpResult is GenerateTotpResult.Success) {
             clipboardManager.setText(

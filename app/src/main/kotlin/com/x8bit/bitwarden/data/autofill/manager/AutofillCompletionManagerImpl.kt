@@ -15,6 +15,7 @@ import com.x8bit.bitwarden.data.autofill.util.toAutofillAppInfo
 import com.x8bit.bitwarden.data.autofill.util.toAutofillCipherProvider
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.model.OrganizationEvent
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -30,6 +31,8 @@ class AutofillCompletionManagerImpl(
         { createSingleItemFilledDataBuilder(cipherView = it) },
     private val organizationEventManager: OrganizationEventManager,
     private val totpManager: AutofillTotpManager,
+    // Multiwarden: items can come from any unlocked account.
+    private val multiAccountVault: MultiAccountVault,
 ) : AutofillCompletionManager {
     private val mainScope = CoroutineScope(dispatcherManager.main)
 
@@ -79,11 +82,14 @@ class AutofillCompletionManagerImpl(
             val resultIntent = createAutofillSelectionResultIntent(dataset)
             Timber.d("Autofill success")
             activity.setResultAndFinish(resultIntent = resultIntent)
-            cipherView.id?.let {
-                organizationEventManager.trackEvent(
-                    event = OrganizationEvent.CipherClientAutoFilled(cipherId = it),
-                )
-            }
+            cipherView.id
+                // Multiwarden: organization events are only recorded for the active account.
+                ?.takeIf { multiAccountVault.findOtherOwner(cipherId = it) == null }
+                ?.let {
+                    organizationEventManager.trackEvent(
+                        event = OrganizationEvent.CipherClientAutoFilled(cipherId = it),
+                    )
+                }
         }
     }
 }

@@ -10,6 +10,7 @@ import com.x8bit.bitwarden.data.autofill.util.getAutofillCallbackIntentOrNull
 import com.x8bit.bitwarden.data.vault.manager.model.GetCipherResult
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.model.VaultUnlockData
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import io.mockk.awaits
 import io.mockk.coEvery
 import io.mockk.every
@@ -37,6 +38,13 @@ class AutofillCallbackViewModelTest : BaseViewModelTest() {
         every { vaultUnlockDataStateFlow } returns mutableVaultUnlockDataStateFlow
     }
 
+    // Multiwarden: no other unlocked accounts, so upstream behaviour is unchanged.
+    private val multiAccountVault: MultiAccountVault = mockk {
+        every { otherUnlockedAccounts() } returns emptyList()
+        every { accountLabelOrNull(userId = any()) } returns null
+        coEvery { findOtherOwner(cipherId = any()) } returns null
+    }
+
     private val intent: Intent = mockk()
 
     @BeforeEach
@@ -46,6 +54,7 @@ class AutofillCallbackViewModelTest : BaseViewModelTest() {
         autofillCallbackViewModel = AutofillCallbackViewModel(
             authRepository = authRepository,
             vaultRepository = vaultRepository,
+            multiAccountVault = multiAccountVault,
         )
     }
 

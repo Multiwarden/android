@@ -19,6 +19,7 @@ import com.x8bit.bitwarden.data.autofill.util.getAutofillAssistStructureOrNull
 import com.x8bit.bitwarden.data.autofill.util.toAutofillAppInfo
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.model.OrganizationEvent
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -60,6 +61,13 @@ class AutofillCompletionManagerTest {
         coEvery { tryCopyTotpToClipboard(cipherView = cipherView) } just runs
     }
 
+    // Multiwarden: no other unlocked accounts, so upstream behaviour is unchanged.
+    private val multiAccountVault: MultiAccountVault = mockk {
+        every { otherUnlockedAccounts() } returns emptyList()
+        every { accountLabelOrNull(userId = any()) } returns null
+        coEvery { findOtherOwner(cipherId = any()) } returns null
+    }
+
     private val autofillCompletionManager: AutofillCompletionManager =
         AutofillCompletionManagerImpl(
             autofillParser = autofillParser,
@@ -67,6 +75,7 @@ class AutofillCompletionManagerTest {
             filledDataBuilderProvider = { filledDataBuilder },
             organizationEventManager = organizationEventManager,
             totpManager = totpManager,
+            multiAccountVault = multiAccountVault,
         )
 
     @BeforeEach
