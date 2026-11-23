@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Multiwarden: the keyhole of the Multiwarden icon (see multiwarden/branding/). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M54,40.2A9,9 0,0 0,47.7 55.63L46.5,72H61.5L60.3,55.63A9,9 0,0 0,54 40.2Z" />
+</vector>

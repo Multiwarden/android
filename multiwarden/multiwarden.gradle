@@ -1,0 +1,62 @@
+/*
+ * Multiwarden: build settings on top of Bitwarden's app/build.gradle.kts, which applies this file
+ * at its end.
+ *
+ * - Own application ID, so Multiwarden installs next to the official Bitwarden app.
+ * - Version: the Bitwarden version plus Multiwarden's release number, both from
+ *   multiwarden/version.json (2026.11.1 release 2 -> versionName 2026.11.1.2).
+ * - App name and launcher icon from multiwarden/android/, added as each variant's
+ *   highest-priority resources so they win over Bitwarden's build-type resources.
+ * - Only the F-Droid flavor is built: the standard flavor's Firebase setup belongs to
+ *   Bitwarden's application ID, and Multiwarden does not use Google services.
+ * - Release signing from the MULTIWARDEN_KEYSTORE_* environment variables when they are set
+ *   (CI sets them from repository secrets; see multiwarden/README.md).
+ */
+import groovy.json.JsonSlurper
+
+def multiwardenVersion = new JsonSlurper().parse(rootProject.file("multiwarden/version.json"))
+def (bitwardenYear, bitwardenMonth, bitwardenPatch) =
+    multiwardenVersion.bitwarden.tokenize(".").collect { it as int }
+def multiwardenRelease = multiwardenVersion.release as int
+
+android {
+    defaultConfig {
+        applicationId = "nl.mteij.multiwarden"
+        versionName = "${multiwardenVersion.bitwarden}.${multiwardenRelease}"
+        // 2026.11.1 release 2 -> 2026110102; always higher than the previous release.
+        versionCode = bitwardenYear * 1000000 + bitwardenMonth * 10000 +
+            bitwardenPatch * 100 + multiwardenRelease
+    }
+}
+
+def keystoreFile = System.getenv("MULTIWARDEN_KEYSTORE_FILE")
+if (keystoreFile) {
+    android {
+        signingConfigs {
+            create("multiwarden") {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("MULTIWARDEN_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MULTIWARDEN_KEY_ALIAS")
+                keyPassword = System.getenv("MULTIWARDEN_KEY_PASSWORD")
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig = signingConfigs.getByName("multiwarden")
+            }
+        }
+    }
+}
+
+androidComponents {
+    beforeVariants(selector().withFlavor(new kotlin.Pair("mode", "standard"))) { variant ->
+        variant.enable = false
+    }
+    onVariants(selector().all()) { variant ->
+        def resources = variant.sources.res
+        resources.addStaticSourceDirectory(rootProject.file("multiwarden/android/res").path)
+        resources.addStaticSourceDirectory(
+            rootProject.file("multiwarden/android/res-${variant.buildType}").path
+        )
+    }
+}

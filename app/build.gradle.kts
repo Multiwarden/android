@@ -325,6 +325,9 @@ afterEvaluate {
         .forEach { it.enabled = false }
 }
 
+// Multiwarden: application ID, version, name and icon (see multiwarden/README.md).
+apply(from = rootProject.file("multiwarden/multiwarden.gradle"))
+
 private fun renameFile(path: String, newName: String) {
     val originalFile = File(path)
     if (!originalFile.exists()) {
