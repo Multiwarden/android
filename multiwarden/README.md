@@ -58,6 +58,13 @@ fewer. After adding, moving or removing a hook on purpose, run
 Branding is **not** done in upstream files: `multiwarden/multiwarden.gradle` adds
 `multiwarden/android/res*` as each variant's highest-priority resources.
 
+### Upstream files Multiwarden leaves out
+
+`multiwarden/upstream-removed-paths` lists Bitwarden files that Multiwarden does not carry:
+Bitwarden's own developer tooling and repository automation (code owners, labels, review and
+response bots). The upstream sync excludes them, so they stay removed. The matching entries in
+`.gitignore` are removed too.
+
 ## Builds and versions
 
 - **Application ID** `com.multiwarden.android` (`.dev` for debug builds), so Multiwarden installs next
@@ -115,7 +122,9 @@ their `main` branch.
     ```bash
     git remote add upstream https://github.com/bitwarden/android.git   # once
     git fetch upstream tag v2026.12.0-bwpm
-    git diff --binary "$(cat multiwarden/upstream-commit)" v2026.12.0-bwpm | git apply --3way --index
+    git diff --binary "$(cat multiwarden/upstream-commit)" v2026.12.0-bwpm -- . \
+    $(grep -v '^#' multiwarden/upstream-removed-paths | sed 's/^/:(exclude)/') \
+    | git apply --3way --index
     git rev-parse "v2026.12.0-bwpm^{commit}" > multiwarden/upstream-commit
     ```
 

@@ -103,7 +103,13 @@ jobs:
           git config user.email "multiwarden-sync@users.noreply.github.com"
           git switch -c "${{ steps.range.outputs.branch }}"
 
-          git diff --binary "${{ steps.range.outputs.last }}" "${{ steps.range.outputs.new }}" > /tmp/upstream.patch
+          # Paths listed in multiwarden/upstream-removed-paths stay out of Multiwarden.
+          excluded=()
+          while read -r path; do
+            excluded+=(":(exclude)$path")
+          done < <(grep -v '^#' multiwarden/upstream-removed-paths | grep -v '^$')
+          git diff --binary "${{ steps.range.outputs.last }}" "${{ steps.range.outputs.new }}" \
+            -- . "${excluded[@]}" > /tmp/upstream.patch
           if git apply --3way --index /tmp/upstream.patch 2> /tmp/apply.log; then
             echo "conflicts=false" >> "$GITHUB_OUTPUT"
           else
