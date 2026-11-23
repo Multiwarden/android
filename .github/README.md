@@ -3,7 +3,7 @@
 <h1 align="center">Multiwarden for Android</h1>
 
 <p align="center">
-  Every unlocked Bitwarden account, working at once.
+  All your vaults, working as one.
 </p>
 
 <p align="center">
