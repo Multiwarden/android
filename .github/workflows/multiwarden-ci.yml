@@ -103,14 +103,21 @@ jobs:
         run: |
           export MULTIWARDEN_KEYSTORE_FILE="$RUNNER_TEMP/multiwarden.keystore"
           echo "$KEYSTORE_BASE64" | base64 --decode > "$MULTIWARDEN_KEYSTORE_FILE"
+          # Universal APK, then one per CPU type (see multiwarden/multiwarden.gradle).
+          mkdir -p build/multiwarden-release
           ./gradlew :app:assembleFdroidRelease
+          cp app/build/outputs/apk/fdroid/release/*.apk "build/multiwarden-release/multiwarden-$VERSION.apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            ./gradlew :app:assembleFdroidRelease -PmultiwardenAbi="$abi"
+            cp app/build/outputs/apk/fdroid/release/*.apk "build/multiwarden-release/multiwarden-$VERSION-$abi.apk"
+          done
           rm -f "$MULTIWARDEN_KEYSTORE_FILE"
 
       - name: Check package name, app name and version
         run: |
           aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -n 1)"
           mkdir -p dist
-          for apk in $(find app/build/outputs/apk -name '*.apk'); do
+          for apk in $(find app/build/outputs/apk/fdroid/debug build/multiwarden-release -name '*.apk' 2>/dev/null); do
             badging="$("$aapt2" dump badging "$apk")"
             echo "$apk"
             echo "$badging" | grep -E "^package:|^application-label:"
@@ -120,15 +127,16 @@ jobs:
               || { echo "::error::$apk is not version $VERSION"; exit 1; }
             echo "$badging" | grep -q "^application-label:'Multiwarden" \
               || { echo "::error::$apk is not called Multiwarden"; exit 1; }
+            case "$apk" in
+              *-arm64-v8a.apk | *-armeabi-v7a.apk | *-x86_64.apk)
+                abi="$(basename "$apk" .apk)"; abi="${abi##*"$VERSION"-}"
+                echo "$badging" | grep -qx "native-code: '$abi'" \
+                  || { echo "::error::$apk has native code for other CPU types than $abi"; exit 1; } ;;
+            esac
           done
           cp app/build/outputs/apk/fdroid/debug/*.apk "dist/multiwarden-debug-$VERSION.apk"
-          # Release: multiwarden-<version>.apk (universal) and multiwarden-<version>-<cpu>.apk.
-          release_dir=app/build/outputs/apk/fdroid/release
-          if [ -d "$release_dir" ]; then
-            cp "$release_dir/com.multiwarden.android-fdroid.apk" "dist/multiwarden-$VERSION.apk"
-            for abi in arm64-v8a armeabi-v7a x86_64; do
-              cp "$release_dir/com.multiwarden.android-fdroid-$abi.apk" "dist/multiwarden-$VERSION-$abi.apk"
-            done
+          if [ -d build/multiwarden-release ]; then
+            cp build/multiwarden-release/*.apk dist/
             ls -l dist
           fi
 

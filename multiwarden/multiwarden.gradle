@@ -11,8 +11,8 @@
  *   Bitwarden's application ID, and Multiwarden does not use Google services.
  * - Release signing from the MULTIWARDEN_KEYSTORE_* environment variables when they are set
  *   (CI sets them from repository secrets; see multiwarden/README.md).
- * - Release builds also produce one APK per CPU type next to the universal APK, and native
- *   libraries are stored compressed. Bitwarden's SDK library is about 30 MB per CPU type, so
+ * - One APK per CPU type next to the universal APK (-PmultiwardenAbi), and native libraries
+ *   stored compressed. Bitwarden's SDK library is about 30 MB per CPU type, so
  *   this takes a download from about 150 MB (universal, uncompressed) to under 40 MB.
  */
 import groovy.json.JsonSlurper
@@ -21,6 +21,7 @@ def multiwardenVersion = new JsonSlurper().parse(rootProject.file("multiwarden/v
 def (bitwardenYear, bitwardenMonth, bitwardenPatch) =
     multiwardenVersion.bitwarden.tokenize(".").collect { it as int }
 def multiwardenRelease = multiwardenVersion.release as int
+def multiwardenAbi = findProperty("multiwardenAbi")
 
 android {
     defaultConfig {
@@ -37,15 +38,15 @@ android {
             useLegacyPackaging = true
         }
     }
-    // One APK per CPU type, plus the universal APK. Only for release builds, so debug builds
-    // stay a single APK. All APKs share the version code; app stores and Obtainium pick the
-    // one that matches the device.
-    splits {
-        abi {
-            enable = gradle.startParameter.taskNames.any { it.contains("Release") }
-            reset()
-            include "arm64-v8a", "armeabi-v7a", "x86_64"
-            universalApk = true
+    // One APK per CPU type: CI builds the release once as the universal APK and once per CPU
+    // type with -PmultiwardenAbi=<cpu>, which keeps only that CPU's native libraries. (AGP's
+    // ABI splits would clash with the per-output tasks app/build.gradle.kts registers.)
+    if (multiwardenAbi) {
+        defaultConfig {
+            ndk {
+                abiFilters.clear()
+                abiFilters.add(multiwardenAbi)
+            }
         }
     }
 }
@@ -74,16 +75,6 @@ androidComponents {
         variant.enable = false
     }
     onVariants(selector().all()) { variant ->
-        // app/build.gradle.kts names every output <application ID>-<flavor>.apk; give the
-        // per-CPU APKs their CPU type as a suffix so they don't overwrite each other.
-        variant.outputs.each { output ->
-            def abi = output.filters.find { it.filterType.toString() == "ABI" }?.identifier
-            if (abi) {
-                output.outputFileName.set(
-                    "${variant.applicationId.get()}-${variant.flavorName}-${abi}.apk"
-                )
-            }
-        }
         def resources = variant.sources.res
         resources.addStaticSourceDirectory(rootProject.file("multiwarden/android/res").path)
         resources.addStaticSourceDirectory(
