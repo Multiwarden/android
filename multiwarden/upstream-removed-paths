@@ -8,9 +8,9 @@
 .mcp.json
 .github/CODEOWNERS
 .github/label-pr.json
-.github/workflows/respond.yml
-.github/workflows/review-code.yml
-.github/workflows/sdlc-label-pr.yml
-.github/workflows/sdlc-sdk-update-evaluate.yml
 .github/ISSUE_TEMPLATE
 .github/PULL_REQUEST_TEMPLATE.md
+# Bitwarden's GitHub Actions workflows need Bitwarden's secrets and infrastructure, so none of
+# them are carried, and new ones Bitwarden adds stay out. Multiwarden's own workflows
+# (multiwarden-*.yml) are not in upstream, so they are unaffected.
+.github/workflows/*

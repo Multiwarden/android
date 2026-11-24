@@ -61,7 +61,7 @@ Branding is **not** done in upstream files: `multiwarden/multiwarden.gradle` add
 ### Upstream files Multiwarden leaves out
 
 `multiwarden/upstream-removed-paths` lists Bitwarden files that Multiwarden does not carry or
-replaces with its own: Bitwarden's developer tooling, repository automation (code owners, labels,
+replaces with its own: Bitwarden's developer tooling, repository automation (all of its GitHub Actions workflows, code owners, labels,
 review and response bots) and its issue and pull request templates. The upstream sync excludes
 them, so removed files stay removed and Multiwarden's own templates are kept. The matching
 entries in `.gitignore` are removed too.
@@ -146,8 +146,6 @@ their `main` branch.
 
 ### Repository settings the automation needs
 
-- **Bitwarden's own workflows off**: they need Bitwarden's secrets and infrastructure. Run once:
-  `bash multiwarden/scripts/disable-upstream-workflows.sh` (needs the GitHub CLI).
 - **Settings → Actions → General → Workflow permissions**: tick "Allow GitHub Actions to create
   and approve pull requests" (the sync opens PRs, Merge sync merges them).
 - **Settings → Branches**: a rule for `main` that requires the Multiwarden CI checks
