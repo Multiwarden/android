@@ -51,9 +51,16 @@ when saving a new login, and a combined vault view.
 
 ## Install
 
-1. Download `multiwarden-<version>.apk` from the
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.multiwarden.android%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmultiwarden%2Fandroid%22%2C%22author%22%3A%22Multiwarden%22%2C%22name%22%3A%22Multiwarden%22%7D"><img src="../multiwarden/branding/get-it-on-obtainium.png" height="48" alt="Get it on Obtainium"></a>
+
+1. **With [Obtainium](https://github.com/ImranR98/Obtainium) (recommended):** open the badge above on your
+   phone. Obtainium installs Multiwarden from the latest release and updates it whenever a new
+   release is published. Or add `https://github.com/multiwarden/android` in Obtainium by hand.
+
+   **Without Obtainium:** download `multiwarden-<version>.apk` from the
    [latest release](https://github.com/multiwarden/android/releases/latest) and open it on your
-   phone. Allow installing from your browser or file manager when Android asks.
+   phone. Allow installing from your browser or file manager when Android asks. You will have to
+   install updates the same way.
 2. Sign in to each account through the account switcher (up to five) and unlock them.
 3. In Android's settings, choose **Multiwarden** as the autofill service.
 
