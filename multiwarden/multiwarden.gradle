@@ -11,6 +11,9 @@
  *   Bitwarden's application ID, and Multiwarden does not use Google services.
  * - Release signing from the MULTIWARDEN_KEYSTORE_* environment variables when they are set
  *   (CI sets them from repository secrets; see multiwarden/README.md).
+ * - Release builds also produce one APK per CPU type next to the universal APK, and native
+ *   libraries are stored compressed. Bitwarden's SDK library is about 30 MB per CPU type, so
+ *   this takes a download from about 150 MB (universal, uncompressed) to under 40 MB.
  */
 import groovy.json.JsonSlurper
 
@@ -26,6 +29,24 @@ android {
         // 2026.11.1 release 2 -> 2026110102; always higher than the previous release.
         versionCode = bitwardenYear * 1000000 + bitwardenMonth * 10000 +
             bitwardenPatch * 100 + multiwardenRelease
+    }
+    // Compressed native libraries: a smaller download, at the cost of Android extracting them
+    // on install.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    // One APK per CPU type, plus the universal APK. Only for release builds, so debug builds
+    // stay a single APK. All APKs share the version code; app stores and Obtainium pick the
+    // one that matches the device.
+    splits {
+        abi {
+            enable = gradle.startParameter.taskNames.any { it.contains("Release") }
+            reset()
+            include "arm64-v8a", "armeabi-v7a", "x86_64"
+            universalApk = true
+        }
     }
 }
 
@@ -53,6 +74,16 @@ androidComponents {
         variant.enable = false
     }
     onVariants(selector().all()) { variant ->
+        // app/build.gradle.kts names every output <application ID>-<flavor>.apk; give the
+        // per-CPU APKs their CPU type as a suffix so they don't overwrite each other.
+        variant.outputs.each { output ->
+            def abi = output.filters.find { it.filterType.toString() == "ABI" }?.identifier
+            if (abi) {
+                output.outputFileName.set(
+                    "${variant.applicationId.get()}-${variant.flavorName}-${abi}.apk"
+                )
+            }
+        }
         def resources = variant.sources.res
         resources.addStaticSourceDirectory(rootProject.file("multiwarden/android/res").path)
         resources.addStaticSourceDirectory(

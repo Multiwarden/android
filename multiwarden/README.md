@@ -42,6 +42,7 @@ fewer. After adding, moving or removing a hook on purpose, run
 | `multiwarden/`                                                               | Version, sync bookkeeping, hook list and scripts.                                                                                            |
 | `.github/workflows/multiwarden-*.yml`                                        | The Multiwarden build/test/release and the nightly upstream sync.                                                                            |
 | `.github/README.md`                                                          | The repository front page (GitHub shows it instead of upstream's README).                                                                    |
+| `fastlane/metadata/android/en-US/`                                           | App title, descriptions and icon that IzzyOnDroid and other F-Droid repositories read.                                                       |
 
 ### Upstream files with hooks
 
@@ -79,9 +80,10 @@ entries in `.gitignore` are removed too.
 
 ### Releases
 
-Run **Multiwarden CI** on `main` from the Actions tab with "release" ticked. It builds a signed
-APK and publishes it as release `v<version>`. Bump `release` in `multiwarden/version.json` first
-when Bitwarden's version has not changed.
+Run **Multiwarden CI** on `main` from the Actions tab with "release" ticked. It builds signed
+APKs (`multiwarden-<version>.apk` for every device, and `multiwarden-<version>-<cpu>.apk` for
+arm64-v8a, armeabi-v7a and x86_64) and publishes them as release `v<version>`. Bump `release`
+in `multiwarden/version.json` first when Bitwarden's version has not changed.
 
 Signing uses these repository secrets (**Settings → Secrets and variables → Actions**). Keep the
 keystore safe: Android only installs updates signed with the same key.

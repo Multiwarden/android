@@ -1,0 +1,15 @@
+<p>Multiwarden is an unofficial fork of the Bitwarden Android app in which every unlocked account takes part in autofill, instead of only the active one.</p>
+
+<p>The official app lets you sign in to several accounts, but to fill a login from another account you first have to switch to it. With Multiwarden you sign in to your accounts once, unlock them, and autofill suggests items from all of them, each labelled with the account it belongs to.</p>
+
+<p><b>What changes</b></p>
+<ul>
+<li>Autofill suggestions from all unlocked accounts, each labelled with its account</li>
+<li>Autofill keeps working while any account is unlocked</li>
+<li>TOTP auto-copy uses the account that owns the login</li>
+<li>Own app ID, name and icon, so it installs next to the official Bitwarden app</li>
+</ul>
+
+<p>Nothing is sent to a server and no keys are copied between accounts: Multiwarden decrypts each account's vault with that account's own keys, on your device. It builds Bitwarden's F-Droid flavor, without Google services.</p>
+
+<p>Multiwarden is experimental, not audited, and not affiliated with, endorsed by or supported by Bitwarden, Inc. "Bitwarden" is a registered trademark of Bitwarden Inc., used here only to describe compatibility. Please report Multiwarden issues to Multiwarden, not to Bitwarden.</p>
