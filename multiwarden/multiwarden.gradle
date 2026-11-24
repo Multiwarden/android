@@ -11,6 +11,9 @@
  *   Bitwarden's application ID, and Multiwarden does not use Google services.
  * - Release signing from the MULTIWARDEN_KEYSTORE_* environment variables when they are set
  *   (CI sets them from repository secrets; see multiwarden/README.md).
+ * - One APK per CPU type next to the universal APK (-PmultiwardenAbi), and native libraries
+ *   stored compressed. Bitwarden's SDK library is about 30 MB per CPU type, so
+ *   this takes a download from about 150 MB (universal, uncompressed) to under 40 MB.
  */
 import groovy.json.JsonSlurper
 
@@ -18,6 +21,7 @@ def multiwardenVersion = new JsonSlurper().parse(rootProject.file("multiwarden/v
 def (bitwardenYear, bitwardenMonth, bitwardenPatch) =
     multiwardenVersion.bitwarden.tokenize(".").collect { it as int }
 def multiwardenRelease = multiwardenVersion.release as int
+def multiwardenAbi = findProperty("multiwardenAbi")
 
 android {
     defaultConfig {
@@ -26,6 +30,24 @@ android {
         // 2026.11.1 release 2 -> 2026110102; always higher than the previous release.
         versionCode = bitwardenYear * 1000000 + bitwardenMonth * 10000 +
             bitwardenPatch * 100 + multiwardenRelease
+    }
+    // Compressed native libraries: a smaller download, at the cost of Android extracting them
+    // on install.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    // One APK per CPU type: CI builds the release once as the universal APK and once per CPU
+    // type with -PmultiwardenAbi=<cpu>, which keeps only that CPU's native libraries. (AGP's
+    // ABI splits would clash with the per-output tasks app/build.gradle.kts registers.)
+    if (multiwardenAbi) {
+        defaultConfig {
+            ndk {
+                abiFilters.clear()
+                abiFilters.add(multiwardenAbi)
+            }
+        }
     }
 }
 

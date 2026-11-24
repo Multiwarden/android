@@ -60,7 +60,8 @@ when saving a new login, and a combined vault view.
    **Without Obtainium:** download `multiwarden-<version>.apk` from the
    [latest release](https://github.com/multiwarden/android/releases/latest) and open it on your
    phone. Allow installing from your browser or file manager when Android asks. You will have to
-   install updates the same way.
+   install updates the same way. Most phones need the `arm64-v8a` APK; the APK without a CPU type
+   works on every phone but is larger.
 2. Sign in to each account through the account switcher (up to five) and unlock them.
 3. In Android's settings, choose **Multiwarden** as the autofill service.
 
