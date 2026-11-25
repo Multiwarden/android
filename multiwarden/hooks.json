@@ -1,4 +1,8 @@
 {
+  "NOTICE": {
+    "markers": 2,
+    "references": 12
+  },
   "app/build.gradle.kts": {
     "markers": 1,
     "references": 4
@@ -23,6 +27,34 @@
     "markers": 10,
     "references": 12
   },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/vault/repository/VaultRepositoryImpl.kt": {
+    "markers": 3,
+    "references": 6
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/data/vault/repository/di/VaultRepositoryModule.kt": {
+    "markers": 1,
+    "references": 2
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/search/SearchViewModel.kt": {
+    "markers": 2,
+    "references": 13
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/item/VaultItemViewModel.kt": {
+    "markers": 2,
+    "references": 15
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/itemlisting/VaultItemListingViewModel.kt": {
+    "markers": 2,
+    "references": 14
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/vault/VaultScreen.kt": {
+    "markers": 2,
+    "references": 12
+  },
+  "app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/vault/VaultViewModel.kt": {
+    "markers": 8,
+    "references": 33
+  },
   "app/src/test/kotlin/com/x8bit/bitwarden/AutofillCallbackViewModelTest.kt": {
     "markers": 1,
     "references": 2
@@ -38,5 +70,9 @@
   "app/src/test/kotlin/com/x8bit/bitwarden/data/autofill/processor/AutofillCipherProviderTest.kt": {
     "markers": 1,
     "references": 2
+  },
+  "ui/src/main/kotlin/com/bitwarden/ui/platform/components/account/BitwardenAccountSwitcher.kt": {
+    "markers": 3,
+    "references": 12
   }
 }

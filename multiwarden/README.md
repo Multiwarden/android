@@ -35,7 +35,9 @@ fewer. After adding, moving or removing a hook on purpose, run
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/MultiAccountVault*`     | Lists the unlocked accounts other than the active one, decrypts their ciphers, finds which account owns an item and generates its TOTP code. |
 | `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/MultiwardenAutofill.kt` | Loads autofill items from every unlocked account (active account first) and adds the account's email to each item's subtitle.                |
-| `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/di/`                    | Hilt module that provides `MultiAccountVault`.                                                                                               |
+| `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/MultiwardenCombinedVault*` | The combined vault: every unlocked account's items and folders together, each labelled with its account ("account · folder", item subtitles end with the account). |
+| `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/ui/`                    | The "All accounts" row in the account switcher.                                                                                              |
+| `app/src/main/kotlin/com/x8bit/bitwarden/multiwarden/di/`                    | Hilt module that provides `MultiAccountVault` and `MultiwardenCombinedVault`.                                                                |
 | `app/src/test/kotlin/com/x8bit/bitwarden/multiwarden/`                       | Tests for the above, and for the autofill provider with a second unlocked account.                                                           |
 | `multiwarden/multiwarden.gradle`                                             | Build settings: application ID `com.multiwarden.android`, version, app name and icon, F-Droid flavor only, release signing.                  |
 | `multiwarden/android/`                                                       | Resources that replace Bitwarden's: app name per build type, launcher icon and colour.                                                       |
@@ -54,6 +56,11 @@ fewer. After adding, moving or removing a hook on purpose, run
 | `app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillTotpManagerImpl.kt`                                                             | TOTP auto-copy uses the owning account's premium status and code.                                                                           |
 | `app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/manager/AutofillCompletionManagerImpl.kt`                                                       | Organization events are only recorded for the active account's items.                                                                       |
 | `app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/di/AutofillModule.kt`                                                                           | Passes `MultiAccountVault` to the classes above.                                                                                            |
+| `app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/vault/VaultViewModel.kt`, `VaultScreen.kt` | Reads the vault through `MultiwardenCombinedVault`; "All accounts" turns the combined vault on, picking an account turns it off. |
+| `app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/itemlisting/VaultItemListingViewModel.kt`, `app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/search/SearchViewModel.kt` | Folder, type and search lists read the combined vault (not in autofill, TOTP or passkey selection, which stay single-account). |
+| `app/src/main/kotlin/com/x8bit/bitwarden/ui/vault/feature/item/VaultItemViewModel.kt` | Another account's item is view-only: edit, delete, archive and restore say which account to switch to. |
+| `app/src/main/kotlin/com/x8bit/bitwarden/data/vault/repository/VaultRepositoryImpl.kt`, `di/VaultRepositoryModule.kt` | Opening an item falls back to the other unlocked account that owns it. |
+| `ui/src/main/kotlin/com/bitwarden/ui/platform/components/account/BitwardenAccountSwitcher.kt` | An optional extra row above the accounts. |
 | `app/src/test/.../AutofillCipherProviderTest.kt`, `AutofillCallbackViewModelTest.kt`, `AutofillTotpManagerTest.kt`, `AutofillCompletionManagerTest.kt` | A `MultiAccountVault` with no other unlocked accounts, so upstream's tests keep testing upstream's behaviour.                               |
 
 Branding is **not** done in upstream files: `multiwarden/multiwarden.gradle` adds
@@ -161,5 +168,5 @@ their `main` branch.
 | Autofill (autofill service, inline)                      | Done: every unlocked account, labelled.                                                             |
 | Passkeys and passwords (Credential Manager, Android 14+) | Next: `BitwardenCredentialManagerImpl` and `Fido2CredentialStoreImpl` read the active account only. |
 | Save prompt                                              | Next: choose which account a new login is saved to.                                                 |
-| Vault screen                                             | Later: a combined view of all unlocked vaults, like the extension's.                                |
+| Vault screen                                             | Done: "All accounts" shows every unlocked vault, labelled. Other accounts' items are view-only.     |
 | Multiwarden settings screen                              | Later.                                                                                              |
