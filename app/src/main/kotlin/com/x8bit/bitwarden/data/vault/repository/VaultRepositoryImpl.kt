@@ -90,8 +90,9 @@ internal class VaultRepositoryImpl(
     private val keyRotationManager: KeyRotationManager,
     private val featureFlagManager: FeatureFlagManager,
     dispatcherManager: DispatcherManager,
-    // Multiwarden: reads items of other unlocked accounts (combined vault).
-    private val multiAccountVault: MultiAccountVault? = null,
+    // Multiwarden: reads items of other unlocked accounts (combined vault). A provider, because
+    // MultiAccountVault needs AuthRepository, which needs this repository.
+    private val multiAccountVaultProvider: () -> MultiAccountVault? = { null },
 ) : VaultRepository,
     CipherManager by cipherManager,
     FolderManager by folderManager,
@@ -151,7 +152,7 @@ internal class VaultRepositoryImpl(
      * owns it, or returns `null` when no other account does.
      */
     private suspend fun multiwardenOtherAccountCipher(itemId: String): GetCipherResult? {
-        val vault = multiAccountVault ?: return null
+        val vault = multiAccountVaultProvider() ?: return null
         val owner = vault.findOtherOwner(cipherId = itemId) ?: return null
         return vault.getCipher(userId = owner.userId, cipherId = itemId)
     }

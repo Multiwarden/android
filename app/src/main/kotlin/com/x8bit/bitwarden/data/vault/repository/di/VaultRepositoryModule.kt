@@ -17,6 +17,7 @@ import com.x8bit.bitwarden.data.vault.manager.VaultSyncManager
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.data.vault.repository.VaultRepositoryImpl
 import com.x8bit.bitwarden.multiwarden.MultiAccountVault
+import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,7 +49,7 @@ object VaultRepositoryModule {
         keyRotationManager: KeyRotationManager,
         featureFlagManager: FeatureFlagManager,
         // Multiwarden: reads items of other unlocked accounts (combined vault).
-        multiAccountVault: MultiAccountVault,
+        multiAccountVault: Lazy<MultiAccountVault>,
     ): VaultRepository = VaultRepositoryImpl(
         vaultDiskSource = vaultDiskSource,
         vaultSdkSource = vaultSdkSource,
@@ -64,6 +65,6 @@ object VaultRepositoryModule {
         pinProtectedUserKeyManager = pinProtectedUserKeyManager,
         keyRotationManager = keyRotationManager,
         featureFlagManager = featureFlagManager,
-        multiAccountVault = multiAccountVault,
+        multiAccountVaultProvider = { multiAccountVault.get() },
     )
 }
