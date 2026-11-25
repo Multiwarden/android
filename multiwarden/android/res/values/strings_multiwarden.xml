@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Multiwarden: the combined vault's entry in the account switcher. -->
+    <string name="multiwarden_all_accounts">All accounts</string>
+    <!-- Multiwarden: shown when editing an item that belongs to another unlocked account. -->
+    <string name="multiwarden_switch_account_to_edit">This item belongs to %1$s. Switch to that account to change it.</string>
+</resources>

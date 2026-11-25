@@ -27,6 +27,7 @@ import com.bitwarden.ui.util.asText
 import com.bitwarden.ui.util.concat
 import com.bitwarden.vault.CipherView
 import com.bitwarden.vault.FolderView
+import com.x8bit.bitwarden.R
 import com.x8bit.bitwarden.data.auth.repository.AuthRepository
 import com.x8bit.bitwarden.data.auth.repository.model.BreachCountResult
 import com.x8bit.bitwarden.data.auth.repository.model.UserState
@@ -45,6 +46,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.DeleteCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.DownloadAttachmentResult
 import com.x8bit.bitwarden.data.vault.repository.model.RestoreCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.UnarchiveCipherResult
+import com.x8bit.bitwarden.multiwarden.MultiwardenCombinedVault
 import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.vault.feature.item.model.TotpCodeItemData
 import com.x8bit.bitwarden.ui.vault.feature.item.model.VaultItemLocation
@@ -104,6 +106,9 @@ class VaultItemViewModel @Inject constructor(
     private val snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
     private val premiumStateManager: PremiumStateManager,
     private val featureFlagManager: FeatureFlagManager,
+    // Multiwarden: items of other accounts in the combined vault are view-only.
+    private val multiwardenCombinedVault: MultiwardenCombinedVault =
+        MultiwardenCombinedVault.passThrough(vaultRepository = vaultRepository),
 ) : BaseViewModel<VaultItemState, VaultItemEvent, VaultItemAction>(
     // We load the state from the savedStateHandle for testing purposes.
     initialState = savedStateHandle[KEY_STATE] ?: run {
@@ -381,6 +386,7 @@ class VaultItemViewModel @Inject constructor(
     }
 
     private fun handleDeleteClick() {
+        if (multiwardenIsOtherAccountItem()) return
         updateDialogState(
             dialog = VaultItemState.DialogState.DeleteConfirmationPrompt(
                 message = state.deletionConfirmationText,
@@ -388,7 +394,23 @@ class VaultItemViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Multiwarden: an item of another account in the combined vault can only be changed from that
+     * account. Returns `true`, after saying so, when this item is such an item.
+     */
+    private fun multiwardenIsOtherAccountItem(): Boolean {
+        val owner = multiwardenCombinedVault.otherOwnerOf(cipherId = state.vaultItemId)
+            ?: return false
+        sendEvent(
+            VaultItemEvent.ShowSnackbar(
+                message = R.string.multiwarden_switch_account_to_edit.asText(owner.email),
+            ),
+        )
+        return true
+    }
+
     private fun handleEditClick() {
+        if (multiwardenIsOtherAccountItem()) return
         sendEvent(
             VaultItemEvent.NavigateToAddEdit(
                 itemId = state.vaultItemId,
@@ -753,6 +775,7 @@ class VaultItemViewModel @Inject constructor(
     }
 
     private fun handleArchiveClick() {
+        if (multiwardenIsOtherAccountItem()) return
         if (!state.hasPremium) {
             mutableStateFlow.update {
                 it.copy(
@@ -787,6 +810,7 @@ class VaultItemViewModel @Inject constructor(
     }
 
     private fun handleUnarchiveClick() {
+        if (multiwardenIsOtherAccountItem()) return
         mutableStateFlow.update {
             it.copy(
                 dialog = VaultItemState.DialogState.Loading(
@@ -1655,6 +1679,7 @@ class VaultItemViewModel @Inject constructor(
     }
 
     private fun handleRestoreItemClicked() {
+        if (multiwardenIsOtherAccountItem()) return
         updateDialogState(VaultItemState.DialogState.RestoreItemDialog)
     }
 

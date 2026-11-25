@@ -52,6 +52,7 @@ import com.x8bit.bitwarden.data.vault.repository.util.toSdkMasterPasswordUnlock
 import com.x8bit.bitwarden.data.vault.repository.util.toVaultUnlockResult
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toFilteredList
+import com.x8bit.bitwarden.multiwarden.MultiAccountVault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -89,6 +90,8 @@ internal class VaultRepositoryImpl(
     private val keyRotationManager: KeyRotationManager,
     private val featureFlagManager: FeatureFlagManager,
     dispatcherManager: DispatcherManager,
+    // Multiwarden: reads items of other unlocked accounts (combined vault).
+    private val multiAccountVault: MultiAccountVault? = null,
 ) : VaultRepository,
     CipherManager by cipherManager,
     FolderManager by folderManager,
@@ -125,6 +128,12 @@ internal class VaultRepositoryImpl(
                         .successes
                         .find { it.id == itemId }
                         .let { getCipher(itemId) }
+                        // Multiwarden: an item of another unlocked account (combined vault).
+                        .let { result ->
+                            result.takeIf { it is GetCipherResult.Success }
+                                ?: multiwardenOtherAccountCipher(itemId = itemId)
+                                ?: result
+                        }
                     when (getCipherResult) {
                         is GetCipherResult.Success -> getCipherResult.cipherView
                         else -> null
@@ -136,6 +145,16 @@ internal class VaultRepositoryImpl(
                 started = SharingStarted.Lazily,
                 initialValue = DataState.Loading,
             )
+
+    /**
+     * Multiwarden: reads the item with the given [itemId] from the other unlocked account that
+     * owns it, or returns `null` when no other account does.
+     */
+    private suspend fun multiwardenOtherAccountCipher(itemId: String): GetCipherResult? {
+        val vault = multiAccountVault ?: return null
+        val owner = vault.findOtherOwner(cipherId = itemId) ?: return null
+        return vault.getCipher(userId = owner.userId, cipherId = itemId)
+    }
 
     override fun getVaultListItemStateFlow(itemId: String): StateFlow<DataState<CipherListView?>> =
         vaultSyncManager

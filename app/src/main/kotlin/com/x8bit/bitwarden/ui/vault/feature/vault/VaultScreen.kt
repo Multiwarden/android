@@ -60,6 +60,7 @@ import com.bitwarden.ui.platform.resource.BitwardenDrawable
 import com.bitwarden.ui.platform.resource.BitwardenPlurals
 import com.bitwarden.ui.platform.resource.BitwardenString
 import com.bitwarden.ui.util.asText
+import com.x8bit.bitwarden.multiwarden.ui.MultiwardenAllAccountsItem
 import com.x8bit.bitwarden.ui.platform.components.dialog.BitwardenMasterPasswordDialog
 import com.x8bit.bitwarden.ui.platform.composition.LocalAppReviewManager
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
@@ -189,6 +190,10 @@ fun VaultScreen(
         vaultHandlers = vaultHandlers,
         onDimBottomNavBarRequest = onDimBottomNavBarRequest,
         snackbarHostState = snackbarHostState,
+        // Multiwarden: "All accounts" in the account switcher.
+        onMultiwardenAllAccountsClick = {
+            viewModel.trySendAction(VaultAction.MultiwardenCombinedClick)
+        },
     )
 }
 
@@ -204,6 +209,7 @@ private fun VaultScreenScaffold(
     vaultHandlers: VaultHandlers,
     onDimBottomNavBarRequest: (shouldDim: Boolean) -> Unit,
     snackbarHostState: BitwardenSnackbarHostState,
+    onMultiwardenAllAccountsClick: () -> Unit = {},
 ) {
     var accountMenuVisible by rememberSaveable {
         mutableStateOf(false)
@@ -318,6 +324,20 @@ private fun VaultScreenScaffold(
                 onDismissRequest = { updateAccountMenuVisibility(false) },
                 topAppBarScrollBehavior = scrollBehavior,
                 modifier = Modifier.fillMaxSize(),
+                // Multiwarden: "All accounts" (the combined vault) above the accounts.
+                multiwardenTopItem = if (state.isMultiwardenCombinedAvailable) {
+                    { dismiss ->
+                        MultiwardenAllAccountsItem(
+                            isSelected = state.isMultiwardenCombinedOn,
+                            onClick = {
+                                dismiss()
+                                onMultiwardenAllAccountsClick()
+                            },
+                        )
+                    }
+                } else {
+                    null
+                },
             )
         },
         pullToRefreshState = pullToRefreshState,

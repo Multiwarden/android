@@ -51,6 +51,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.UnarchiveCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.UpdateCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
+import com.x8bit.bitwarden.multiwarden.MultiwardenCombinedVault
 import com.x8bit.bitwarden.ui.platform.feature.search.model.AutofillSelectionOption
 import com.x8bit.bitwarden.ui.platform.feature.search.model.SearchType
 import com.x8bit.bitwarden.ui.platform.feature.search.util.filterAndOrganize
@@ -73,6 +74,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -107,6 +109,9 @@ class SearchViewModel @Inject constructor(
     settingsRepo: SettingsRepository,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
     specialCircumstanceManager: SpecialCircumstanceManager,
+    // Multiwarden: the combined vault (every unlocked account's items and folders).
+    private val multiwardenCombinedVault: MultiwardenCombinedVault =
+        MultiwardenCombinedVault.passThrough(vaultRepository = vaultRepo),
 ) : BaseViewModel<SearchState, SearchEvent, SearchAction>(
     // We load the state from the savedStateHandle for testing purposes.
     initialState = savedStateHandle[KEY_STATE]
@@ -145,6 +150,17 @@ class SearchViewModel @Inject constructor(
             )
         },
 ) {
+    /**
+     * Multiwarden: the combined vault's data, except where an item is picked for autofill or a
+     * TOTP code, which only work with the active account's items.
+     */
+    private val multiwardenVaultDataStateFlow: StateFlow<DataState<VaultData>>
+        get() = if (state.isAutofill || state.isTotp) {
+            vaultRepo.vaultDataStateFlow
+        } else {
+            multiwardenCombinedVault.vaultDataStateFlow
+        }
+
     init {
         settingsRepo
             .isIconLoadingDisabledFlow
@@ -152,8 +168,7 @@ class SearchViewModel @Inject constructor(
             .onEach(::sendAction)
             .launchIn(viewModelScope)
 
-        vaultRepo
-            .vaultDataStateFlow
+        multiwardenVaultDataStateFlow
             .map { SearchAction.Internal.VaultDataReceive(it) }
             .onEach(::sendAction)
             .launchIn(viewModelScope)
@@ -992,7 +1007,7 @@ class SearchViewModel @Inject constructor(
             )
         }
 
-        vaultRepo.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenVaultDataStateFlow.value.data?.let { vaultData ->
             updateStateWithVaultData(vaultData = vaultData, clearDialogState = false)
         }
     }
@@ -1072,7 +1087,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun recalculateViewState() {
-        vaultRepo.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenVaultDataStateFlow.value.data?.let { vaultData ->
             updateStateWithVaultData(vaultData = vaultData, clearDialogState = false)
         }
     }
@@ -1129,8 +1144,7 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun getCipherListViewOrNull(cipherId: String) =
-        vaultRepo
-            .vaultDataStateFlow
+        multiwardenVaultDataStateFlow
             .value
             .data
             ?.decryptCipherListResult

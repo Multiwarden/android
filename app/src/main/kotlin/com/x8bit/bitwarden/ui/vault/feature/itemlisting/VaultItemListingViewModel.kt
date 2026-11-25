@@ -85,6 +85,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.RemovePasswordSendResult
 import com.x8bit.bitwarden.data.vault.repository.model.UnarchiveCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
+import com.x8bit.bitwarden.multiwarden.MultiwardenCombinedVault
 import com.x8bit.bitwarden.ui.credentials.manager.model.AssertFido2CredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.CreateCredentialResult
 import com.x8bit.bitwarden.ui.credentials.manager.model.GetCredentialsResult
@@ -117,6 +118,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -157,6 +159,9 @@ class VaultItemListingViewModel @Inject constructor(
     private val premiumStateManager: PremiumStateManager,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
     private val featureFlagManager: FeatureFlagManager,
+    // Multiwarden: the combined vault (every unlocked account's items and folders).
+    private val multiwardenCombinedVault: MultiwardenCombinedVault =
+        MultiwardenCombinedVault.passThrough(vaultRepository = vaultRepository),
 ) : BaseViewModel<VaultItemListingState, VaultItemListingEvent, VaultItemListingsAction>(
     initialState = run {
         val userState = requireNotNull(authRepository.userStateFlow.value)
@@ -262,9 +267,19 @@ class VaultItemListingViewModel @Inject constructor(
             ?: observeVaultData()
     }
 
+    /**
+     * Multiwarden: the combined vault's data, except where an item is picked for autofill, a
+     * passkey or a TOTP code, which only work with the active account's items.
+     */
+    private val multiwardenVaultDataStateFlow: StateFlow<DataState<VaultData>>
+        get() = if (state.shouldShowNavigationIcon) {
+            multiwardenCombinedVault.vaultDataStateFlow
+        } else {
+            vaultRepository.vaultDataStateFlow
+        }
+
     private fun observeVaultData() {
-        vaultRepository
-            .vaultDataStateFlow
+        multiwardenVaultDataStateFlow
             .map {
                 VaultItemListingsAction.Internal.VaultDataReceive(
                     it
@@ -1884,7 +1899,7 @@ class VaultItemListingViewModel @Inject constructor(
             )
         }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenVaultDataStateFlow.value.data?.let { vaultData ->
             updateStateWithVaultData(vaultData, clearDialogState = false)
         }
     }
@@ -1894,7 +1909,7 @@ class VaultItemListingViewModel @Inject constructor(
     ) {
         mutableStateFlow.update { it.copy(isVfo1FoundationEnabled = action.isEnabled) }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenVaultDataStateFlow.value.data?.let { vaultData ->
             updateStateWithVaultData(vaultData, clearDialogState = false)
         }
     }
@@ -2011,7 +2026,7 @@ class VaultItemListingViewModel @Inject constructor(
             it.copy(isIconLoadingDisabled = action.isIconLoadingDisabled)
         }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenVaultDataStateFlow.value.data?.let { vaultData ->
             updateStateWithVaultData(vaultData, clearDialogState = false)
         }
     }
@@ -2546,7 +2561,7 @@ class VaultItemListingViewModel @Inject constructor(
             )
         }
 
-        val cipherListView = vaultRepository.vaultDataStateFlow.value.data
+        val cipherListView = multiwardenVaultDataStateFlow.value.data
             ?.decryptCipherListResult
             ?.successes
             ?.find { it.id == action.data.cipherId }

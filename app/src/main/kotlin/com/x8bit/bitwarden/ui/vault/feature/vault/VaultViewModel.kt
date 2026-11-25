@@ -61,6 +61,7 @@ import com.x8bit.bitwarden.data.vault.repository.model.ArchiveCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.GenerateTotpResult
 import com.x8bit.bitwarden.data.vault.repository.model.UnarchiveCipherResult
 import com.x8bit.bitwarden.data.vault.repository.model.VaultData
+import com.x8bit.bitwarden.multiwarden.MultiwardenCombinedVault
 import com.x8bit.bitwarden.ui.platform.model.SnackbarRelay
 import com.x8bit.bitwarden.ui.vault.components.model.CreateVaultItemType
 import com.x8bit.bitwarden.ui.vault.components.util.toVaultItemCipherTypeOrNull
@@ -89,6 +90,7 @@ import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -130,6 +132,9 @@ class VaultViewModel @Inject constructor(
     buildInfoManager: BuildInfoManager,
     featureFlagManager: FeatureFlagManager,
     snackbarRelayManager: SnackbarRelayManager<SnackbarRelay>,
+    // Multiwarden: the combined vault (every unlocked account's items and folders).
+    private val multiwardenCombinedVault: MultiwardenCombinedVault =
+        MultiwardenCombinedVault.passThrough(vaultRepository = vaultRepository),
 ) : BaseViewModel<VaultState, VaultEvent, VaultAction>(
     initialState = run {
         val userState = authRepository.userStateFlow.value
@@ -217,7 +222,20 @@ class VaultViewModel @Inject constructor(
             .onEach(::sendAction)
             .launchIn(viewModelScope)
 
-        vaultRepository
+        // Multiwarden: whether the account switcher offers and checks "All accounts".
+        combine(
+            multiwardenCombinedVault.isCombinedModeOnFlow,
+            multiwardenCombinedVault.isCombinedModeAvailableFlow,
+        ) { isOn, isAvailable ->
+            VaultAction.Internal.MultiwardenCombinedModeReceive(
+                isOn = isOn,
+                isAvailable = isAvailable,
+            )
+        }
+            .onEach(::sendAction)
+            .launchIn(viewModelScope)
+
+        multiwardenCombinedVault
             .vaultDataStateFlow
             .map {
                 vaultRepository.getValidTotpCipherIds(
@@ -365,6 +383,11 @@ class VaultViewModel @Inject constructor(
             is VaultAction.LogoutAccountClick -> handleLogoutAccountClick(action)
             is VaultAction.SwitchAccountClick -> handleSwitchAccountClick(action)
             is VaultAction.AddAccountClick -> handleAddAccountClick()
+            // Multiwarden: "All accounts" in the account switcher.
+            is VaultAction.MultiwardenCombinedClick -> {
+                multiwardenCombinedVault.setCombinedModeOn(isOn = true)
+            }
+
             is VaultAction.SyncClick -> handleSyncClick()
             is VaultAction.LockClick -> handleLockClick()
             is VaultAction.VaultFilterTypeSelect -> handleVaultFilterTypeSelect(action)
@@ -586,7 +609,7 @@ class VaultViewModel @Inject constructor(
         }
 
         updateViewState(
-            vaultData = vaultRepository.vaultDataStateFlow.value,
+            vaultData = multiwardenCombinedVault.vaultDataStateFlow.value,
             validTotpIds = state.validTotpIds,
         )
     }
@@ -674,6 +697,8 @@ class VaultViewModel @Inject constructor(
     }
 
     private fun handleSwitchAccountClick(action: VaultAction.SwitchAccountClick) {
+        // Multiwarden: picking a single account leaves the combined vault.
+        multiwardenCombinedVault.setCombinedModeOn(isOn = false)
         val isSwitchingAccounts =
             when (authRepository.switchAccount(userId = action.accountSummary.userId)) {
                 SwitchAccountResult.AccountSwitched -> true
@@ -724,7 +749,7 @@ class VaultViewModel @Inject constructor(
 
         // Re-process the current vault data with the new filter
         updateViewState(
-            vaultData = vaultRepository.vaultDataStateFlow.value,
+            vaultData = multiwardenCombinedVault.vaultDataStateFlow.value,
             validTotpIds = state.validTotpIds,
         )
     }
@@ -1164,6 +1189,14 @@ class VaultViewModel @Inject constructor(
                 action,
             )
 
+            // Multiwarden: the combined vault's setting and availability.
+            is VaultAction.Internal.MultiwardenCombinedModeReceive -> mutableStateFlow.update {
+                it.copy(
+                    isMultiwardenCombinedOn = action.isOn,
+                    isMultiwardenCombinedAvailable = action.isAvailable,
+                )
+            }
+
             is VaultAction.Internal.OverflowValidatePasswordResultReceive -> {
                 handleOverflowValidatePasswordResultReceive(action)
             }
@@ -1328,7 +1361,7 @@ class VaultViewModel @Inject constructor(
             it.copy(isNewItemTypesEnabled = action.isEnabled)
         }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenCombinedVault.vaultDataStateFlow.value.data?.let { vaultData ->
             updateVaultState(
                 vaultData = vaultData,
                 dialog = state.dialog,
@@ -1344,7 +1377,7 @@ class VaultViewModel @Inject constructor(
             it.copy(isVfo1FoundationEnabled = action.isEnabled)
         }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenCombinedVault.vaultDataStateFlow.value.data?.let { vaultData ->
             updateVaultState(
                 vaultData = vaultData,
                 dialog = state.dialog,
@@ -1463,7 +1496,7 @@ class VaultViewModel @Inject constructor(
             it.copy(restrictItemTypesPolicyOrgIds = action.restrictItemTypesPolicyOrdIds)
         }
 
-        vaultRepository.vaultDataStateFlow.value.data?.let { vaultData ->
+        multiwardenCombinedVault.vaultDataStateFlow.value.data?.let { vaultData ->
             updateVaultState(
                 vaultData = vaultData,
                 dialog = state.dialog,
@@ -1556,7 +1589,7 @@ class VaultViewModel @Inject constructor(
         // so the row reflects the new entitlement immediately after upgrade.
         if (previousIsPremium != nextIsPremium) {
             updateViewState(
-                vaultData = vaultRepository.vaultDataStateFlow.value,
+                vaultData = multiwardenCombinedVault.vaultDataStateFlow.value,
                 validTotpIds = state.validTotpIds,
             )
         }
@@ -1936,6 +1969,9 @@ data class VaultState(
     val isNewItemTypesEnabled: Boolean = false,
     val isVfo1FoundationEnabled: Boolean = false,
     val policyBanner: PolicyBanner?,
+    // Multiwarden: the combined vault is on / can be offered (more than one account unlocked).
+    val isMultiwardenCombinedOn: Boolean = false,
+    val isMultiwardenCombinedAvailable: Boolean = false,
 ) : Parcelable {
 
     /**
@@ -2679,6 +2715,11 @@ sealed class VaultAction {
     data object AddAccountClick : VaultAction()
 
     /**
+     * Multiwarden: user clicked "All accounts" in the account switcher.
+     */
+    data object MultiwardenCombinedClick : VaultAction()
+
+    /**
      * User clicked the Sync option in the overflow menu.
      */
     data object SyncClick : VaultAction()
@@ -2888,6 +2929,14 @@ sealed class VaultAction {
          */
         data class IconLoadingSettingReceive(
             val isIconLoadingDisabled: Boolean,
+        ) : Internal()
+
+        /**
+         * Multiwarden: the combined vault's setting or availability changed.
+         */
+        data class MultiwardenCombinedModeReceive(
+            val isOn: Boolean,
+            val isAvailable: Boolean,
         ) : Internal()
 
         /**

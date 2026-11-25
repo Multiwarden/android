@@ -103,6 +103,8 @@ private const val MAXIMUM_ACCOUNT_LIMIT = 5
  * when `true`, this button may be hidden when there are more than [MAXIMUM_ACCOUNT_LIMIT] accounts
  * present.
  * @param modifier A [Modifier] for the composable.
+ * @param multiwardenTopItem Multiwarden: an extra row shown above the accounts (the combined
+ * vault's "All accounts"), or `null` for none. The switcher closes when it is clicked.
  * @param topAppBarScrollBehavior Used to derive the background color of the content and keep it in
  * sync with the associated app bar.
  */
@@ -123,6 +125,8 @@ fun BitwardenAccountSwitcher(
         .union(WindowInsets.navigationBars)
         .only(WindowInsetsSides.Horizontal),
     isAddAccountAvailable: Boolean = true,
+    // Multiwarden: an extra row above the accounts.
+    multiwardenTopItem: (@Composable (onDismissRequest: () -> Unit) -> Unit)? = null,
 ) {
     // Track the actual visibility (according to the internal transitions) so that we know when we
     // can safely show dialogs.
@@ -203,6 +207,8 @@ fun BitwardenAccountSwitcher(
             isAddAccountAvailable = isAddAccountAvailable,
             topAppBarScrollBehavior = topAppBarScrollBehavior,
             currentAnimationState = { isVisibleActual = it },
+            multiwardenTopItem = multiwardenTopItem,
+            onMultiwardenDismissRequest = onDismissRequest,
             windowInsets = windowInsets,
             modifier = Modifier
                 .fillMaxWidth(),
@@ -225,6 +231,8 @@ private fun AnimatedAccountSwitcher(
     topAppBarScrollBehavior: TopAppBarScrollBehavior,
     currentAnimationState: (isVisible: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    multiwardenTopItem: (@Composable (onDismissRequest: () -> Unit) -> Unit)? = null,
+    onMultiwardenDismissRequest: () -> Unit = {},
     windowInsets: WindowInsets = WindowInsets.displayCutout
         .union(WindowInsets.navigationBars)
         .only(WindowInsetsSides.Horizontal),
@@ -249,6 +257,13 @@ private fun AnimatedAccountSwitcher(
                 .scrolledContainerBackground(topAppBarScrollBehavior)
                 .windowInsetsPadding(windowInsets),
         ) {
+            // Multiwarden: an extra row above the accounts.
+            multiwardenTopItem?.let { topItem ->
+                item {
+                    topItem(onMultiwardenDismissRequest)
+                    BitwardenHorizontalDivider()
+                }
+            }
             items(accountSummaries) { accountSummary ->
                 AccountSummaryItem(
                     accountSummary = accountSummary,
