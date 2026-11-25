@@ -44,6 +44,9 @@ interface MultiwardenCombinedVault {
      */
     fun otherOwnerOf(cipherId: String): MultiwardenAccount?
 
+    /**
+     * Ready-made [MultiwardenCombinedVault]s.
+     */
     companion object {
         /**
          * A [MultiwardenCombinedVault] that is always off and passes [vaultRepository]'s data
